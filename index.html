@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KMP vs Boyer-Moore &mdash; String Matching Visualizer</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="site-header">
+  <h1>Knuth-Morris-Pratt vs. Boyer-Moore</h1>
+  <p class="subtitle">Interactive visualizer &amp; performance analysis of two linear-time string-matching algorithms</p>
+</header>
+
+<main>
+  <section id="visualizer" class="panel">
+    <h2>1. Interactive Visualizer</h2>
+
+    <div class="controls-grid">
+      <label>
+        Text
+        <textarea id="textInput" rows="3">ABABDABACDABABCABAB</textarea>
+      </label>
+      <label>
+        Pattern
+        <input id="patternInput" type="text" value="ABABCABAB">
+      </label>
+      <div class="presets">
+        <span>Presets:</span>
+        <button data-preset="classic">Classic</button>
+        <button data-preset="dna">DNA</button>
+        <button data-preset="english">English prose</button>
+      </div>
+    </div>
+
+    <div class="playback-controls">
+      <button id="btnReset">⏮ Reset</button>
+      <button id="btnStepBack">◀ Step</button>
+      <button id="btnPlayPause">▶ Play</button>
+      <button id="btnStepFwd">Step ▶</button>
+      <button id="btnRunToEnd">Run to end ⏭</button>
+      <label class="speed-label">
+        Speed
+        <input id="speedRange" type="range" min="20" max="500" value="150">
+      </label>
+    </div>
+
+    <p id="errorMsg" class="error-msg"></p>
+
+    <div class="algo-panels">
+      <div class="algo-panel" id="panelKMP">
+        <h3>KMP <span class="badge">LPS array</span></h3>
+        <div class="viewport">
+          <div class="pattern-row" id="kmpPatternRow"></div>
+          <div class="text-row" id="kmpTextRow"></div>
+        </div>
+        <div class="stats">
+          <span>Comparisons: <strong id="kmpComparisons">0</strong></span>
+          <span>Preprocessing comparisons: <strong id="kmpPreComparisons">0</strong></span>
+          <span>Matches found: <strong id="kmpMatches">0</strong></span>
+        </div>
+        <details>
+          <summary>LPS (failure) array</summary>
+          <div id="kmpLpsTable" class="mono-table"></div>
+        </details>
+      </div>
+
+      <div class="algo-panel" id="panelBM">
+        <h3>Boyer-Moore <span class="badge">Bad-char + good-suffix</span></h3>
+        <div class="viewport">
+          <div class="pattern-row" id="bmPatternRow"></div>
+          <div class="text-row" id="bmTextRow"></div>
+        </div>
+        <div class="stats">
+          <span>Comparisons: <strong id="bmComparisons">0</strong></span>
+          <span>Preprocessing comparisons: <strong id="bmPreComparisons">0</strong></span>
+          <span>Matches found: <strong id="bmMatches">0</strong></span>
+        </div>
+        <details>
+          <summary>Good-suffix shift table</summary>
+          <div id="bmGsTable" class="mono-table"></div>
+        </details>
+      </div>
+    </div>
+
+    <div class="legend">
+      <span><i class="swatch current-match"></i> comparing (match)</span>
+      <span><i class="swatch current-mismatch"></i> comparing (mismatch)</span>
+      <span><i class="swatch already-matched"></i> matched this alignment</span>
+      <span><i class="swatch confirmed"></i> confirmed occurrence</span>
+    </div>
+  </section>
+
+  <section id="benchmarks" class="panel">
+    <h2>2. Benchmark Results</h2>
+    <p>
+      Measured with the Python reference implementation across text lengths and alphabet sizes
+      (DNA = 4 symbols, English prose &asymp; 27 symbols, synthetic uniform alphabets up to 94 symbols).
+      Full methodology and raw CSVs are in the <code>benchmark-data/</code> folder.
+    </p>
+    <div class="chart-grid">
+      <figure>
+        <img src="benchmark-data/comparisons_vs_length_DNA.png" alt="Comparisons vs text length for DNA alphabet" loading="lazy">
+        <figcaption>Comparisons vs. text length &mdash; DNA alphabet (size 4)</figcaption>
+      </figure>
+      <figure>
+        <img src="benchmark-data/comparisons_vs_length_English.png" alt="Comparisons vs text length for English alphabet" loading="lazy">
+        <figcaption>Comparisons vs. text length &mdash; English-like prose (size 27)</figcaption>
+      </figure>
+      <figure>
+        <img src="benchmark-data/comparisons_vs_alphabet_size.png" alt="Comparisons vs alphabet size" loading="lazy">
+        <figcaption>Comparisons vs. alphabet size (text length 20,000)</figcaption>
+      </figure>
+      <figure>
+        <img src="benchmark-data/time_vs_alphabet_size.png" alt="Time vs alphabet size" loading="lazy">
+        <figcaption>Wall-clock time vs. alphabet size (text length 20,000)</figcaption>
+      </figure>
+    </div>
+
+    <h3>Key findings</h3>
+    <ul>
+      <li>At 100,000 characters of DNA text, KMP performs <strong>&asymp;1.24</strong> comparisons per character
+        (bounded by its <code>&le;2n</code> guarantee) vs. Boyer-Moore's <strong>&asymp;0.33</strong> &mdash; about
+        3.7&times; fewer comparisons.</li>
+      <li>On English-like prose (larger alphabet), Boyer-Moore's advantage widens further
+        (&asymp;0.12 comparisons/char) because bad-character skips get larger as symbols repeat less often.</li>
+      <li>KMP's comparison count stays almost flat across alphabet sizes &mdash; its guarantee depends on pattern
+        self-similarity, not alphabet size &mdash; while Boyer-Moore improves sharply as the alphabet grows, then
+        plateaus past &asymp;30 symbols.</li>
+      <li>On an adversarial <code>"aaa...ab"</code> pattern, KMP's comparisons barely change (true <code>O(n)</code>
+        worst case), confirming it never degrades.</li>
+    </ul>
+  </section>
+
+  <section id="complexity" class="panel">
+    <h2>3. Complexity Summary</h2>
+    <table class="complexity-table">
+      <thead>
+        <tr><th>Algorithm</th><th>Preprocessing</th><th>Worst-case matching</th><th>Typical (large alphabet)</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>KMP</td><td>O(m)</td><td>O(n)</td><td>O(n)</td></tr>
+        <tr><td>Boyer-Moore</td><td>O(m + &sigma;)</td><td>O(n) with strong good suffix</td><td>O(n/m) best case, sub-linear typical</td></tr>
+      </tbody>
+    </table>
+    <p class="footnote">n = text length, m = pattern length, &sigma; = alphabet size.</p>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <p>Design &amp; Analysis of Algorithms &mdash; String Matching &amp; Text Processing mini project.</p>
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>
