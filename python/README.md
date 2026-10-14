@@ -113,34 +113,30 @@ Running `python benchmark.py` from this folder regenerates these into a local `r
   and purely synthetic large alphabets (size 64–94, e.g., binary/genomic
   encodings with byte-level symbols) give the best case for BM.
 
-- **Worst-case vs. average-case (binary alphabet).** KMP's comparison count
-  is nearly identical between average-case and the adversarial
-  `"aaa...ab"` pattern (consistent with its `O(n + m)` worst-case
-  guarantee — it never regresses). Boyer-Moore's raw comparison count can
-  actually *decrease* on this specific adversarial pattern in our runs,
-  because the pattern's single trailing mismatch character lets the
-  bad-character rule reject most alignments after very few comparisons;
-  Boyer-Moore's true theoretical worst case (`O(nm)`) requires patterns
-  that are *highly periodic* (e.g., `"aaaa...a"` against a text of all
-  `a`s), which the bundled generators do not construct by default — the
-  good-suffix rule caps the worst case at `O(n)` even then for the version
-  implemented here (strong good suffix), but the plain bad-character-only
-  variant can degrade to `O(nm)` on such inputs.
+- **Binary-pattern comparison.** KMP's comparison count is nearly identical
+  between the random pattern and the tested repeated-prefix pattern, which is
+  consistent with KMP's `O(n + m)` overall guarantee. Boyer-Moore's count can
+  decrease on the tested `"aaa...ab"` pattern because its final character
+  often enables a useful bad-character shift against the generated random
+  binary text. This is an illustrative input comparison, not a constructed
+  worst case. The standard Boyer-Moore algorithm with bad-character and
+  good-suffix rules but without Galil's optimization can have `O(nm)` worst-
+  case search time; this implementation does not claim a linear worst-case
+  bound.
 
-- **Bottom line.** For small, low-entropy alphabets (DNA-like), KMP's
-  guarantee of never re-reading text is competitive and BM's advantage is
-  smaller; for larger/higher-entropy alphabets (English prose and beyond),
-  Boyer-Moore's average-case skip distance makes it substantially faster in
-  both comparisons and wall-clock time, which explains why most real-world
-  text editors / `grep`-like tools favor Boyer-Moore-family algorithms
-  while bioinformatics tools favor KMP/Aho-Corasick-style automata for
-  small-alphabet genomic data.
+- **Bottom line.** In these generated inputs, Boyer-Moore makes fewer
+  matching comparisons than KMP, particularly for English-like text. The
+  benchmark is limited to the chosen alphabet, text lengths, pattern length,
+  and random seeds; it does not establish that Boyer-Moore is always faster.
+  KMP has a simpler linear worst-case matching guarantee, while this
+  Boyer-Moore implementation often skips more text positions on typical
+  inputs but has an `O(nm)` general worst-case bound.
 
 ## Complexity summary
 
 | Algorithm    | Preprocessing | Worst-case matching | Typical matching (large alphabet) |
 |--------------|---------------|----------------------|------------------------------------|
 | KMP          | O(m)          | O(n)                 | O(n)                               |
-| Boyer-Moore  | O(m + σ)      | O(n) (strong good suffix) / O(nm) (bad-char only) | O(n/m) best case, sub-linear typical |
+| Boyer-Moore  | O(m) for these table constructions | O(nm) without Galil optimization | Often sub-linear character inspections; O(n/m) best case for fixed m |
 
 where `n` = text length, `m` = pattern length, `σ` = alphabet size.
